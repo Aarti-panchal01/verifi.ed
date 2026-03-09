@@ -4,7 +4,7 @@ import ScoreCircle from '../components/ScoreCircle';
 import DomainChart from '../components/DomainChart';
 import Timeline from '../components/SkillTimeline';
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL;
 
 export default function DashboardPage() {
     const { address, connected, connectWallet, setManualWallet } = useWallet();

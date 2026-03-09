@@ -3,7 +3,7 @@ import { useWallet } from '../context/WalletContext';
 import ScoreCircle from '../components/ScoreCircle';
 import DomainChart from '../components/DomainChart';
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL;
 
 export default function VerifierPage() {
     const { address, connected, connectWallet, setManualWallet } = useWallet();

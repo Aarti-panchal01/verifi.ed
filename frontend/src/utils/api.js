@@ -10,7 +10,7 @@
  * - Type-safe endpoints
  */
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL;
 const TIMEOUT = 30000;
 const MAX_RETRIES = 3;
 
