@@ -65,7 +65,11 @@ app = FastAPI(
 # ── CORS ──────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "*", 
+        "https://verifi-ed.vercel.app",
+        "https://verifi-ed-production.up.railway.app"
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -94,23 +98,33 @@ RATE_WINDOW = 60  # seconds
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
+    # Disable rate limit for health check
+    if request.url.path == "/health":
+        return await call_next(request)
+        
     client_ip = request.client.host if request.client else "unknown"
     now = time.time()
-
+    
     if client_ip not in _rate_store:
         _rate_store[client_ip] = []
-
+    
     # Clean old entries
     _rate_store[client_ip] = [t for t in _rate_store[client_ip] if now - t < RATE_WINDOW]
-
-    if len(_rate_store[client_ip]) >= RATE_LIMIT:
+    
+    # If we are in production behind a proxy, we might need X-Forwarded-For
+    # For now, let's keep it simple but generous
+    if len(_rate_store[client_ip]) >= (RATE_LIMIT * 2): # Double the limit in prod
         return JSONResponse(
             status_code=429,
-            content={"detail": "Rate limit exceeded. Try again later."},
+            content={"detail": "Too many requests. Please slow down."},
         )
-
+    
     _rate_store[client_ip].append(now)
     return await call_next(request)
+
+@app.get("/health", tags=["System"])
+async def health():
+    return {"status": "ok", "time": time.time()}
 
 
 # ── Import & register routers ────────────────────────────────────────
