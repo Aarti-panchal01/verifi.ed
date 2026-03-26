@@ -1,46 +1,35 @@
-/**
- * API Client — Production-Grade HTTP Client
- * ===========================================
- * 
- * Centralized API client with:
- * - Environment-based configuration
- * - Error handling
- * - Request/response interceptors
- * - Retry logic
- * - Type-safe endpoints
+﻿/**
+ * API URL Resolution
+ * ------------------
+ * Production (Vercel): always https://verifi-ed-production.up.railway.app
+ * Local dev:           http://localhost:8000
+ *
+ * DO NOT add VITE_API_URL to Vercel environment variables.
+ * Vite bakes env vars at build time - setting VITE_API_URL=http://localhost:8000
+ * on Vercel would override this logic and break production.
  */
 
-// Default to production Railway backend
-let resolvedAPI = "https://verifi-ed-production.up.railway.app";
+const PRODUCTION_API = "https://verifi-ed-production.up.railway.app";
+const LOCAL_API = "http://localhost:8000";
 
-// Only use localhost if the browser is actually on localhost
-if (typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    resolvedAPI = "http://localhost:8000";
-}
+// window.location.hostname is evaluated at RUNTIME in the browser,
+// so this correctly detects Vercel vs local without any env vars.
+const _isLocal =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
 
-// Allow environment variable to override, but ONLY if it's not localhost 
-// when we are clearly not on a local machine.
-if (import.meta.env.VITE_API_URL) {
-    const envApi = import.meta.env.VITE_API_URL;
-    const isLocalMachine = typeof window !== 'undefined' && 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    
-    if (isLocalMachine || !envApi.includes('localhost')) {
-        resolvedAPI = envApi;
-    }
-}
+export const API_URL = _isLocal ? LOCAL_API : PRODUCTION_API;
 
-const API_URL = resolvedAPI;
-console.log('[Verifi-ed] API Route Resolved:', API_URL);
+console.log("[Verifi-ed] API_URL:", API_URL);
 
 const TIMEOUT = 30000;
 const MAX_RETRIES = 3;
 
-class APIError extends Error {
+export class APIError extends Error {
   constructor(message, status, data) {
     super(message);
-    this.name = 'APIError';
+    this.name = "APIError";
     this.status = status;
     this.data = data;
   }
@@ -54,12 +43,8 @@ async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES) {
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers: { "Content-Type": "application/json", ...options.headers },
     });
-
     clearTimeout(timeoutId);
 
     if (!response.ok) {
@@ -70,100 +55,37 @@ async function fetchWithRetry(url, options = {}, retries = MAX_RETRIES) {
         errorData
       );
     }
-
     return await response.json();
   } catch (error) {
     clearTimeout(timeoutId);
-
-    if (error.name === 'AbortError') {
-      throw new APIError('Request timeout', 408, {});
-    }
-
+    if (error.name === "AbortError") throw new APIError("Request timeout", 408, {});
     if (retries > 0 && (error.status === 429 || error.status >= 500)) {
-      const delay = Math.pow(2, MAX_RETRIES - retries) * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((r) => setTimeout(r, Math.pow(2, MAX_RETRIES - retries) * 1000));
       return fetchWithRetry(url, options, retries - 1);
     }
-
     throw error;
   }
 }
 
 export const api = {
-  // Scoring endpoints
-  async analyzeRepo(repoUrl, mode = 'DEVELOPER') {
-    return fetchWithRetry(`${API_URL}/analyze/repo`, {
-      method: 'POST',
-      body: JSON.stringify({ repo_url: repoUrl, mode }),
-    });
+  async analyzeRepo(repoUrl, mode = "DEVELOPER") {
+    return fetchWithRetry(`${API_URL}/analyze/repo`, { method: "POST", body: JSON.stringify({ repo_url: repoUrl, mode }) });
   },
-
-  async analyzeCertificate(filePath, mode = 'LEARNER') {
-    return fetchWithRetry(`${API_URL}/analyze/certificate`, {
-      method: 'POST',
-      body: JSON.stringify({ file_path: filePath, mode }),
-    });
-  },
-
-  async analyzeProject(projectPath, mode = 'DEVELOPER') {
-    return fetchWithRetry(`${API_URL}/analyze/project`, {
-      method: 'POST',
-      body: JSON.stringify({ project_path: projectPath, mode }),
-    });
-  },
-
-  // Verification endpoints
   async verifyRepo(repoUrl, wallet = null) {
-    return fetchWithRetry(`${API_URL}/verify-evidence/repo`, {
-      method: 'POST',
-      body: JSON.stringify({ repo_url: repoUrl, wallet }),
-    });
+    return fetchWithRetry(`${API_URL}/verify-evidence/repo`, { method: "POST", body: JSON.stringify({ repo_url: repoUrl, wallet }) });
   },
-
   async verifyCertificate(filePath) {
-    return fetchWithRetry(`${API_URL}/verify-evidence/certificate`, {
-      method: 'POST',
-      body: JSON.stringify({ file_path: filePath }),
-    });
+    return fetchWithRetry(`${API_URL}/verify-evidence/certificate`, { method: "POST", body: JSON.stringify({ file_path: filePath }) });
   },
-
   async verifyProject(projectPath) {
-    return fetchWithRetry(`${API_URL}/verify-evidence/project`, {
-      method: 'POST',
-      body: JSON.stringify({ project_path: projectPath }),
-    });
+    return fetchWithRetry(`${API_URL}/verify-evidence/project`, { method: "POST", body: JSON.stringify({ project_path: projectPath }) });
   },
-
-  // Submission endpoint
   async submitRecord(data) {
-    return fetchWithRetry(`${API_URL}/submit`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    return fetchWithRetry(`${API_URL}/submit`, { method: "POST", body: JSON.stringify(data) });
   },
-
-  // Retrieval endpoints
-  async getWalletRecords(wallet) {
-    return fetchWithRetry(`${API_URL}/wallet/${wallet}`);
-  },
-
-  async getTimeline(wallet) {
-    return fetchWithRetry(`${API_URL}/timeline/${wallet}`);
-  },
-
-  // Reputation endpoints
-  async getReputation(wallet) {
-    return fetchWithRetry(`${API_URL}/reputation/${wallet}`);
-  },
-
-  async verifyWallet(wallet) {
-    return fetchWithRetry(`${API_URL}/verify/${wallet}`);
-  },
-
-  // Health check
-  async health() {
-    return fetchWithRetry(`${API_URL}/health`);
-  },
+  async getWalletRecords(wallet) { return fetchWithRetry(`${API_URL}/wallet/${wallet}`); },
+  async getTimeline(wallet) { return fetchWithRetry(`${API_URL}/timeline/${wallet}`); },
+  async getReputation(wallet) { return fetchWithRetry(`${API_URL}/reputation/${wallet}`); },
+  async verifyWallet(wallet) { return fetchWithRetry(`${API_URL}/verify/${wallet}`); },
+  async health() { return fetchWithRetry(`${API_URL}/health`); },
 };
-
-export { APIError, API_URL };

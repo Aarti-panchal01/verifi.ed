@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useWallet } from '../context/WalletContext';
 import ScoreCircle from '../components/ScoreCircle';
 import DomainChart from '../components/DomainChart';
 import Timeline from '../components/SkillTimeline';
+
 import { API_URL as API } from '../utils/api';
 
 export default function DashboardPage() {
@@ -44,21 +45,16 @@ export default function DashboardPage() {
             setReputation(repData);
             setRecords(walletData.records || []);
         } catch (e) {
-            console.error('Fetch error:', e);
-            let msg = e.message;
-            if (msg === 'Failed to fetch') {
-                msg = 'Failed to connect to backend server. Ensure the backend is running locally on port 8000 (uvicorn) or deployed with HTTPS.';
-            }
-            setError(msg);
+            setError(e.message);
         } finally {
             setLoading(false);
         }
     }
 
     function handleManualLookup() {
-        const addrToLookup = walletInput || address;
-        if (addrToLookup && addrToLookup.length >= 58) {
-            handleLookup(addrToLookup);
+        if (walletInput.length >= 58) {
+            setManualWallet(walletInput);
+            handleLookup(walletInput);
         }
     }
 
@@ -73,48 +69,49 @@ export default function DashboardPage() {
                 </p>
             </div>
 
-            {/* Wallet Input — Auto-fills when connected */}
-            <div className="card" style={{ marginBottom: '24px' }}>
-                <div className="card-header">
-                    <div className="card-icon">⬡</div>
-                    <div>
-                        <div className="card-title">{connected ? 'View Skill Reputation' : 'Lookup Wallet Dashboard'}</div>
-                        <div className="card-description">Paste any Algorand address or connect your wallet</div>
+            {/* Wallet Input â€” Auto-fills when connected */}
+            {!connected && (
+                <div className="card" style={{ marginBottom: '24px' }}>
+                    <div className="card-header">
+                        <div className="card-icon">â¬¡</div>
+                        <div>
+                            <div className="card-title">Connect Wallet to View Dashboard</div>
+                            <div className="card-description">Connect Pera Wallet or paste your address</div>
+                        </div>
                     </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    {!connected && (
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <button className="btn btn-accent" onClick={connectWallet}>
-                            ⬡ Connect Pera Wallet
+                            â¬¡ Connect Pera Wallet
                         </button>
-                    )}
-                    <input
-                        id="dashboard-wallet-input"
-                        className="form-input form-input-mono"
-                        placeholder="Paste Algorand wallet address…"
-                        value={walletInput || (connected ? address : '')}
-                        onChange={e => setWalletInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleManualLookup()}
-                        style={{ flex: 1, minWidth: 200 }}
-                    />
-                    <button
-                        id="dashboard-lookup-btn"
-                        className={`btn btn-primary ${loading ? 'btn-loading' : ''}`}
-                        onClick={handleManualLookup}
-                        disabled={loading || (!walletInput && !address) || (walletInput && walletInput.length < 58)}
-                    >
-                        {loading ? '' : 'Lookup'}
-                    </button>
+                        <span style={{ alignSelf: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>or</span>
+                        <input
+                            id="dashboard-wallet-input"
+                            className="form-input form-input-mono"
+                            placeholder="Paste Algorand wallet addressâ€¦"
+                            value={walletInput}
+                            onChange={e => setWalletInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleManualLookup()}
+                            style={{ flex: 1, minWidth: 200 }}
+                        />
+                        <button
+                            id="dashboard-lookup-btn"
+                            className={`btn btn-primary ${loading ? 'btn-loading' : ''}`}
+                            onClick={handleManualLookup}
+                            disabled={loading || walletInput.length < 58}
+                        >
+                            {loading ? '' : 'Lookup'}
+                        </button>
+                    </div>
+                    {error && <div className="result-panel result-error" style={{ marginTop: '12px' }}>{error}</div>}
                 </div>
-                {error && <div className="result-panel result-error" style={{ marginTop: '12px' }}>{error}</div>}
-            </div>
+            )}
 
             {/* Connected but loading */}
             {connected && loading && (
                 <div className="card analyzing-skeleton">
                     <div className="skeleton-pulse" style={{ textAlign: 'center', padding: '40px' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: 12 }}>📊</div>
-                        <div style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>Loading dashboard for {address.slice(0, 6)}…{address.slice(-4)}</div>
+                        <div style={{ fontSize: '2rem', marginBottom: 12 }}>ðŸ“Š</div>
+                        <div style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>Loading dashboard for {address.slice(0, 6)}â€¦{address.slice(-4)}</div>
                     </div>
                 </div>
             )}
@@ -134,7 +131,7 @@ export default function DashboardPage() {
                     {/* Connected wallet badge */}
                     {connected && (
                         <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div className="card-icon" style={{ width: 32, height: 32, fontSize: '0.9rem', background: 'var(--success-dim)' }}>✓</div>
+                            <div className="card-icon" style={{ width: 32, height: 32, fontSize: '0.9rem', background: 'var(--success-dim)' }}>âœ“</div>
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{address}</span>
                         </div>
                     )}
@@ -167,7 +164,7 @@ export default function DashboardPage() {
                     {/* Badge + Metadata */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
                         <span className={`verification-badge ${reputation.verification_badge ? 'verified' : 'unverified'}`}>
-                            {reputation.verification_badge ? '✓ Verified Talent' : '◯ Not Yet Verified'}
+                            {reputation.verification_badge ? 'âœ“ Verified Talent' : 'â—¯ Not Yet Verified'}
                         </span>
                         {reputation.top_domain && (
                             <span className="tag tag-domain">Top: {reputation.top_domain}</span>
@@ -183,7 +180,7 @@ export default function DashboardPage() {
                         {/* Domain Strengths */}
                         <div className="card">
                             <div className="card-header">
-                                <div className="card-icon">📊</div>
+                                <div className="card-icon">ðŸ“Š</div>
                                 <div>
                                     <div className="card-title">Domain Strengths</div>
                                     <div className="card-description">Skill distribution across domains</div>
@@ -195,7 +192,7 @@ export default function DashboardPage() {
                         {/* Score Overview */}
                         <div className="card" style={{ textAlign: 'center' }}>
                             <div className="card-header" style={{ justifyContent: 'center' }}>
-                                <div className="card-icon">⬡</div>
+                                <div className="card-icon">â¬¡</div>
                                 <div>
                                     <div className="card-title">Reputation Score</div>
                                     <div className="card-description">Weighted, time-decayed aggregate</div>
@@ -208,7 +205,7 @@ export default function DashboardPage() {
                     {/* Timeline */}
                     <div className="card" style={{ marginTop: '24px' }}>
                         <div className="card-header">
-                            <div className="card-icon">📜</div>
+                            <div className="card-icon">ðŸ“œ</div>
                             <div>
                                 <div className="card-title">Record Timeline</div>
                                 <div className="card-description">{records.length} on-chain attestation(s)</div>
@@ -222,7 +219,7 @@ export default function DashboardPage() {
             {/* Empty State */}
             {!loading && !reputation && connected && !error && (
                 <div className="empty-state" style={{ marginTop: '48px' }}>
-                    <div className="empty-state-icon">📋</div>
+                    <div className="empty-state-icon">ðŸ“‹</div>
                     <p>No reputation data found for this wallet</p>
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 8 }}>Submit evidence first to build your on-chain reputation</p>
                 </div>
@@ -230,3 +227,4 @@ export default function DashboardPage() {
         </div>
     );
 }
+

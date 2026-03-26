@@ -1,7 +1,8 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useWallet } from '../context/WalletContext';
 import ScoreCircle from '../components/ScoreCircle';
 import DomainChart from '../components/DomainChart';
+
 import { API_URL as API } from '../utils/api';
 
 export default function VerifierPage() {
@@ -24,29 +25,24 @@ export default function VerifierPage() {
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Verification failed');
             setData(await res.json());
         } catch (e) {
-            console.error('Verify error:', e);
-            let msg = e.message;
-            if (msg === 'Failed to fetch') {
-                msg = 'Failed to connect to backend. Ensure your local backend is running on port 8000.';
-            }
-            setError(msg);
+            setError(e.message);
         } finally {
             setLoading(false);
         }
     }
 
     function handleManualVerify() {
-        const addrToVerify = walletInput || address;
-        if (addrToVerify && addrToVerify.length >= 58) {
-            handleVerify(addrToVerify);
+        if (walletInput.length >= 58) {
+            setManualWallet(walletInput);
+            handleVerify(walletInput);
         }
     }
 
     const tierLabel = data ? (
-        data.total_reputation >= 90 ? 'exceptional' :
-            data.total_reputation >= 70 ? 'strong' :
-                data.total_reputation >= 50 ? 'moderate' :
-                    data.total_reputation >= 30 ? 'developing' : 'minimal'
+        data.credibility_score >= 90 ? 'exceptional' :
+            data.credibility_score >= 70 ? 'strong' :
+                data.credibility_score >= 50 ? 'moderate' :
+                    data.credibility_score >= 30 ? 'developing' : 'minimal'
     ) : '';
 
     return (
@@ -54,14 +50,14 @@ export default function VerifierPage() {
             <div className="page-header">
                 <h1 className="page-title">Verify Talent</h1>
                 <p className="page-subtitle">
-                    Enter any Algorand wallet to verify their on-chain skill reputation — trustless, transparent, and tamper-proof.
+                    Enter any Algorand wallet to verify their on-chain skill reputation â€” trustless, transparent, and tamper-proof.
                 </p>
             </div>
 
             {/* Wallet Input */}
             <div className="card" style={{ marginBottom: 24 }}>
                 <div className="card-header">
-                    <div className="card-icon">🔍</div>
+                    <div className="card-icon">ðŸ”</div>
                     <div>
                         <div className="card-title">Wallet Verification</div>
                         <div className="card-description">Verify any wallet's skill reputation</div>
@@ -74,31 +70,37 @@ export default function VerifierPage() {
                             const addr = await connectWallet();
                             if (addr) handleVerify(addr);
                         }}>
-                            ⬡ Connect Wallet
+                            â¬¡ Connect & Verify
                         </button>
+                    )}
+                    {!connected && (
+                        <span style={{ alignSelf: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>or</span>
                     )}
                     <input
                         id="verifier-wallet-input"
                         className="form-input form-input-mono"
-                        placeholder="Enter any Algorand wallet address…"
-                        value={walletInput || (connected ? address : '')}
-                        onChange={e => setWalletInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleManualVerify()}
+                        placeholder="Enter any Algorand wallet addressâ€¦"
+                        value={connected ? address : walletInput}
+                        onChange={e => connected ? null : setWalletInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && (connected ? handleVerify(address) : handleManualVerify())}
                         style={{ flex: 1, minWidth: 200 }}
+                        readOnly={connected}
                     />
                     <button
                         id="verifier-verify-btn"
                         className={`btn btn-primary ${loading ? 'btn-loading' : ''}`}
-                        onClick={handleManualVerify}
-                        disabled={loading || (!connected && !walletInput && !address) || (walletInput && walletInput.length < 58)}
+                        onClick={() => connected ? handleVerify(address) : handleManualVerify()}
+                        disabled={loading || (!connected && walletInput.length < 58)}
                     >
                         {loading ? '' : 'Verify'}
                     </button>
                 </div>
 
-                <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {connected ? `Connected: ${address.slice(0, 8)}… — ` : ''}Paste any wallet address to verify their on-chain skill reputation.
-                </div>
+                {connected && (
+                    <div style={{ marginTop: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        Connected wallet: {address.slice(0, 8)}â€¦{address.slice(-4)} â€¢ Or paste another wallet to verify someone else
+                    </div>
+                )}
 
                 {error && <div className="result-panel result-error" style={{ marginTop: 12 }}>{error}</div>}
             </div>
@@ -107,8 +109,8 @@ export default function VerifierPage() {
             {loading && (
                 <div className="card analyzing-skeleton">
                     <div className="skeleton-pulse" style={{ textAlign: 'center', padding: 40 }}>
-                        <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔍</div>
-                        <div style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>Verifying on-chain records…</div>
+                        <div style={{ fontSize: '2rem', marginBottom: 12 }}>ðŸ”</div>
+                        <div style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>Verifying on-chain recordsâ€¦</div>
                     </div>
                 </div>
             )}
@@ -118,19 +120,19 @@ export default function VerifierPage() {
                 <div className="animate-in">
                     {/* Verification Header */}
                     <div className="score-hero" style={{ marginBottom: 24 }}>
-                        <ScoreCircle score={Math.round(data.total_reputation || 0)} size={140} label="Verified" />
+                        <ScoreCircle score={data.credibility_score || 0} size={140} label="Verified" />
                         <div className="score-hero-info" style={{ flex: 1 }}>
                             <h3 style={{ margin: 0 }}>
                                 <span className={`verification-badge ${data.verified ? 'verified' : 'unverified'}`} style={{ marginRight: 12 }}>
-                                    {data.verified ? '✓ Verified' : '◯ Unverified'}
+                                    {data.verified ? 'âœ“ Verified' : 'â—¯ Unverified'}
                                 </span>
                                 Skill Profile
                             </h3>
                             <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                                {data.total_records || 0} on-chain attestation(s) • Trust index: {((data.trust_index || 0) * 100).toFixed(1)}%
+                                {data.total_records || 0} on-chain attestation(s) â€¢ Trust index: {((data.trust_index || 0) * 100).toFixed(1)}%
                             </p>
                             <span className={`tier-badge ${tierLabel}`}>
-                                {tierLabel} — {Math.round(data.total_reputation || 0)}/100
+                                {tierLabel} â€” {data.credibility_score || 0}/100
                             </span>
                         </div>
                     </div>
@@ -154,7 +156,7 @@ export default function VerifierPage() {
                         </div>
                         <div className="stat-card">
                             <div className="stat-value" style={{ color: data.verified ? 'var(--success)' : 'var(--text-muted)' }}>
-                                {data.verified ? '✓' : '—'}
+                                {data.verified ? 'âœ“' : 'â€”'}
                             </div>
                             <div className="stat-label">Verified Badge</div>
                         </div>
@@ -164,7 +166,7 @@ export default function VerifierPage() {
                     {data.domain_scores?.length > 0 && (
                         <div className="card" style={{ marginBottom: 24 }}>
                             <div className="card-header">
-                                <div className="card-icon">📊</div>
+                                <div className="card-icon">ðŸ“Š</div>
                                 <div>
                                     <div className="card-title">Domain Breakdown</div>
                                     <div className="card-description">Verified skill domains from on-chain records</div>
@@ -178,7 +180,7 @@ export default function VerifierPage() {
                     {data.records?.length > 0 && (
                         <div className="card">
                             <div className="card-header">
-                                <div className="card-icon">📜</div>
+                                <div className="card-icon">ðŸ“œ</div>
                                 <div>
                                     <div className="card-title">On-Chain Records</div>
                                     <div className="card-description">{data.records.length} verified attestation(s)</div>
@@ -215,3 +217,4 @@ export default function VerifierPage() {
         </div>
     );
 }
+
